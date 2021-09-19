@@ -1,25 +1,59 @@
 import numpy as np
 from scipy.sparse import lil_matrix
+from scipy.sparse import linalg
 import cv2
+import os
 
+def on_omega(point, omega):
+    if omega[point] != 1:
+        return False
+    i,k = point
+    border = [(i+1,k),(i-1,k),(i,k+1),(i,k-1)]
+    for p in border:
+        if omega[p] != 1:
+            return True
+    return False
+
+
+def point_area(point, omega):
+    if omega[point] != 1:
+        return 2
+    elif on_omega(point, omega) == True:
+        return 1
+    return 0
 
 def create_sparse_matrix(points):
     matrix = lil_matrix(len(points),len(points))
-    for row, column in enumerate(points):
-        matrix[row,row] = 4
-        border = [(column+1,column),(column-1,column),(column,column+1),(column,column-1)]
+    for i, k in enumerate(points):
+        matrix[i,i] = 4
+        x, y = k
+        border = [(x+1,y),(x-1,y),(x,y+1),(x,y-1)]
         for point in border:
             if point in points:
                 index = points.index(point)
-                matrix[row, index] = -1
+                matrix[i, index] = -1
     return matrix
 
 
 def poisson_blend(source, target, mask):
     nonzero = np.nonzero(mask)
     points = zip(nonzero[0], nonzero[1])
-    matrix = create_sparse_matrix(points)
-    return 0
+    matrixA = create_sparse_matrix(points)
+    matrixB = np.zeros(len(points))
+    for i, k in enumerate(points):
+        x,y = k
+        laplace = -4*source[x,y] + source[x+1,y] + source[x-1,y] + source[x,y+1] + source[x,y-1]
+        if point_area(k, mask) == 1:
+            border = [(x+1,y),(x-1,y),(x,y+1),(x,y-1)]
+            for p in border:
+                if mask[p] == False:
+                    matrixB[i] = matrixB[i] + target[p]
+    
+    unknown_values = linalg.cg(matrixA, matrixB)
+    composite = np.copy(target).astype(int)
+    for i, k in enumerate(points):
+        composite[k] = unknown_values[0][i]
+    return composite
     
 
 
@@ -42,6 +76,7 @@ if __name__ == "__main__":
     results = []
     for channel in range(RGBchannels):
         results.append(poisson_blend(source_image[:,:,channel], target_image[:,:,channel], mask))
-    
+
     result = cv2.merge(results)
+    cv2.imwrite("output.jpg",result)
 
