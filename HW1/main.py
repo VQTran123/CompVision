@@ -2,7 +2,6 @@ import numpy as np
 from scipy.sparse import lil_matrix
 from scipy.sparse import linalg
 import cv2
-import os
 
 def on_omega(point, omega):
     if omega[point] != 1:
@@ -58,24 +57,26 @@ def poisson_blend(source, target, mask):
 
 
 if __name__ == "__main__":
-    source_name = input("Enter file name of source image ")
+    source_name = "source_q1.jpg"
+    target_name = "target_q1.jpg"
+    mask_name = "mask_hw1_q1.jpg"
+    '''source_name = input("Enter file name of source image ")
     target_name = input("Enter file name of target image ")
-    mask_name = input("Enter file name of mask ")
+    mask_name = input("Enter file name of mask ")'''
 
     source_image = cv2.imread(source_name)
     target_image = cv2.imread(target_name)
     mask_image = cv2.imread(mask_name, cv2.IMREAD_GRAYSCALE)
 
-    mask = np.array(mask_image).astype(float)/255
-    '''for i in range(len(mask)):
-        if mask[i] != 1:
-            mask[i] = 0'''
+    mask = np.atleast_3d(mask_image).astype(float)/255
+    source = np.atleast_3d(source_image).astype(float)/255
+    target = np.atleast_3d(target_image).astype(float)/255
     mask[mask != 1] = 0
     mask = mask[:,:,0]
-    RGBchannels = source_image.shape[-1]
+    RGBchannels = np.atleast_1d(source_image).shape[-1]
     results = []
     for channel in range(RGBchannels):
-        results.append(poisson_blend(source_image[:,:,channel], target_image[:,:,channel], mask))
+        results.append(poisson_blend(source[:,:,channel], target[:,:,channel], mask))
 
     result = cv2.merge(results)
     cv2.imwrite("output.jpg",result)
