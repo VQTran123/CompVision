@@ -22,26 +22,27 @@ def point_area(point, omega):
     return 0
 
 def create_sparse_matrix(points):
-    matrix = lil_matrix(len(points),len(points))
+    matrix = np.zeros((len(points),len(points)))
     for i, k in enumerate(points):
-        matrix[i,i] = 4
+        matrix[i, i] = 4
         x, y = k
         border = [(x+1,y),(x-1,y),(x,y+1),(x,y-1)]
         for point in border:
             if point in points:
                 index = points.index(point)
                 matrix[i, index] = -1
+    print("finished creating sparse matrix!!")
     return matrix
 
 
-def poisson_blend(source, target, mask):
+def poisson_blend(source, target, mask):    
     nonzero = np.nonzero(mask)
-    points = zip(nonzero[0], nonzero[1])
+    points = list(zip(nonzero[0], nonzero[1]))
     matrixA = create_sparse_matrix(points)
     matrixB = np.zeros(len(points))
     for i, k in enumerate(points):
         x,y = k
-        laplace = -4*source[x,y] + source[x+1,y] + source[x-1,y] + source[x,y+1] + source[x,y-1]
+        matrixB[i] = -4*source[x,y] + source[x+1,y] + source[x-1,y] + source[x,y+1] + source[x,y-1]
         if point_area(k, mask) == 1:
             border = [(x+1,y),(x-1,y),(x,y+1),(x,y-1)]
             for p in border:
