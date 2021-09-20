@@ -1,8 +1,10 @@
+
 import numpy as np
+import scipy
 from scipy.sparse import lil_matrix
 from scipy.sparse import linalg
 import cv2
-'''
+
 def on_omega(point, omega):
     if omega[point] != 1:
         return False
@@ -22,23 +24,33 @@ def point_area(point, omega):
     return 0
 
 def create_sparse_matrix(points):
-    matrix = np.zeros((len(points),len(points)))
-    for i, k in enumerate(points):
-        matrix[i, i] = 4
-        x, y = k
+    
+    pointss = list(zip(points[0], points[1]))
+    #print(len(pointss))
+    print(pointss[0])
+    matrix = scipy.sparse.lil_matrix((len(points[0]),len(points[0])),dtype=np.float64)
+    print(matrix.shape)
+    for i in enumerate(pointss):
+        #print(i[1][0])
+        matrix[i[1][0], i[1][0]] = 4.0
+        x = i[1][0]
+        y = i[1][1]
         border = [(x+1,y),(x-1,y),(x,y+1),(x,y-1)]
         for point in border:
-            if point in points:
-                index = points.index(point)
-                matrix[i, index] = -1
+            if point in pointss:
+                index = pointss.index(point)
+                matrix[i[1][0], index] = -1
     print("finished creating sparse matrix!!")
+    #matrix = lil_matrix(matrix)
     return matrix
 
 
 def poisson_blend(source, target, mask):    
     nonzero = np.nonzero(mask)
+    
     points = list(zip(nonzero[0], nonzero[1]))
-    matrixA = create_sparse_matrix(points)
+    print(len(points))
+    matrixA = create_sparse_matrix(nonzero)
     matrixB = np.zeros(len(points))
     for i, k in enumerate(points):
         x,y = k
@@ -50,23 +62,14 @@ def poisson_blend(source, target, mask):
                     matrixB[i] = matrixB[i] + target[p]
     
     unknown_values = linalg.cg(matrixA, matrixB)
+    #print(unknown_values)
+    #print(target)
     composite = np.copy(target).astype(int)
     for i, k in enumerate(points):
         composite[k] = unknown_values[0][i]
     return composite
-    '''
-def poisson_blend(source, target, mask):
-    new_image = target.copy()
-    for i in range(1,len(target)):
-        for j in range(1,len(target[i])):
-            if mask[i][j] == 255:
-                #print (str(mask[i-1][j])+str(mask[i][j-1])+str(mask[i][j+1])+str(mask[i+1][j]))
-                #print(target[i][j] + source[i][j])
-                print(i)
-                target[i][j] = source[i][j]
-                
     
-    return new_image
+
 
 if __name__ == "__main__":
     source_name = "dog.png"
@@ -80,28 +83,24 @@ if __name__ == "__main__":
     target_image = cv2.imread(target_name)
     mask_image = cv2.imread(mask_name, cv2.IMREAD_GRAYSCALE)
 
-    #print (source_image[0][0])
-    #print (mask_image[391][324])
-    #note to self, the cv reads x and y are [y][x] with literal coord
-    #print(len(source_image))
-    result = poisson_blend(source_image, target_image, mask_image)
-    #for i in range(1,863):
-        #print(i)
-        #print(" ")
-        #print(str(mask_image[391][i]) + " " + str(source_image[391][i))
-    '''
+    
+
     mask = np.atleast_3d(mask_image).astype(float)/255
     source = np.atleast_3d(source_image).astype(float)/255
     target = np.atleast_3d(target_image).astype(float)/255
+    source = np.atleast_3d(source_image)
+    target = np.atleast_3d(target_image)
     mask[mask != 1] = 0
     mask = mask[:,:,0]
-    RGBchannels = np.atleast_1d(source_image).shape[-1]
+    print(len(mask))
+    print(len(mask[0]))
+    
+    #RGBchannels = np.array(source_image).astype(int)
+    #print(len(RGBchannels))
     results = []
-    for channel in range(RGBchannels):
+    for channel in range(len(target)):
         results.append(poisson_blend(source[:,:,channel], target[:,:,channel], mask))
 
     result = cv2.merge(results)
-    cv2.imwrite("output.jpg",result)
-    '''
     cv2.imwrite("output.png",result)
 
