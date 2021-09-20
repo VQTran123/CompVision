@@ -2,6 +2,8 @@ import numpy as np
 from scipy.sparse import linalg
 import cv2
 
+#Problem 1
+
 def on_omega(point, omega):
     if omega[point] != 1:
         return False
@@ -40,12 +42,13 @@ def poisson_blend(source, target, mask):
     matrixB = np.zeros(len(points))
     for i, k in enumerate(points):
         x,y = k
-        matrixB[i] = -4*source[x,y] + source[x+1,y] + source[x-1,y] + source[x,y+1] + source[x,y-1]
-        if point_area(k, mask) == 1:
-            border = [(x+1,y),(x-1,y),(x,y+1),(x,y-1)]
-            for p in border:
-                if mask[p] != 1:
-                    matrixB[i] = -1*matrixB[i] - target[p]
+        if y + 1 < len(source) and x + 1 < len(source[0]):
+            matrixB[i] = -4*source[x,y] + source[x+1,y] + source[x-1,y] + source[x,y+1] + source[x,y-1]
+            if point_area(k, mask) == 1:
+                border = [(x+1,y),(x-1,y),(x,y+1),(x,y-1)]
+                for p in border:
+                    if mask[p] != 1:
+                        matrixB[i] = -1*matrixB[i] - target[p]
     
     unknown_values = linalg.cg(matrixA, matrixB)
     composite = np.copy(target).astype(int)
@@ -94,11 +97,11 @@ if __name__ == "__main__":
     results = []
     for channel in range(RGBchannels):
         #Poisson w/o gradient mixing
-        #results.append(poisson_blend(source[:,:,channel], target[:,:,channel], mask))
+        results.append(poisson_blend(source[:,:,channel], target[:,:,channel], mask))
         #Gradient mixing
-        source_grad = compute_gradient(source[:,:,channel], mask)
-        target_grad = compute_gradient(target[:,:,channel], mask)
-        results.append(compute_vector(source_grad, target_grad, mask, target[:,:,channel]))
+        #source_grad = compute_gradient(source[:,:,channel], mask)
+        #target_grad = compute_gradient(target[:,:,channel], mask)
+        #results.append(compute_vector(source_grad, target_grad, mask, target[:,:,channel]))
 
     result = cv2.merge(results)
     cv2.imwrite("output.jpg",result)
