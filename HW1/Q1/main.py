@@ -31,7 +31,7 @@ def create_sparse_matrix(points):
             if point in points:
                 index = points.index(point)
                 matrix[i, index] = -1
-    print("finished creating sparse matrix!!")
+    #matrix = lil_matrix(matrix)
     return matrix
 
 
@@ -58,9 +58,9 @@ def poisson_blend(source, target, mask):
 
 
 if __name__ == "__main__":
-    source_name = "source_q1.jpg"
-    target_name = "target_q1.jpg"
-    mask_name = "mask_hw1_q1.jpg"
+    source_name = "source_q1(1).jpg"
+    target_name = "target_q1(1).jpg"
+    mask_name = "phone.jpg"
     '''source_name = input("Enter file name of source image ")
     target_name = input("Enter file name of target image ")
     mask_name = input("Enter file name of mask ")'''
@@ -70,8 +70,8 @@ if __name__ == "__main__":
     mask_image = cv2.imread(mask_name, cv2.IMREAD_GRAYSCALE)
 
     mask = np.atleast_3d(mask_image).astype(float)/255
-    source = np.atleast_3d(source_image).astype(float)/255
-    target = np.atleast_3d(target_image).astype(float)/255
+    source = np.atleast_3d(source_image)
+    target = np.atleast_3d(target_image)
     mask[mask != 1] = 0
     mask = mask[:,:,0]
     RGBchannels = np.atleast_1d(source_image).shape[-1]
