@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.sparse import linalg
 import cv2
+import scipy.sparse
 
 #Problem 1
 
@@ -68,21 +69,36 @@ def compute_gradient(image, mask):
 def compute_vector(s_grad, t_grad, mask, target):
     nonzero = np.nonzero(mask)
     points = list(zip(nonzero[0], nonzero[1]))
-    vector_field =  np.copy(target).astype(int)
+    matrixA = create_sparse_matrix(nonzero)
+    test = scipy.sparse.coo_matrix(matrixA)
+    matA = np.zeros((matrixA.shape))
+    for i,j,v in zip(test.row, test.col, test.data):
+        matA[i][j] = v
+    vector_field =  np.zeros(len(points))
     for i, k in enumerate(points):
         x,y = k
-        vector_field[x,y] = max(s_grad[i], t_grad[i])
+        vector_field[i] = max(s_grad[i], t_grad[i])
         if i != 0:
-            vector_field[x-1,y] = vector_field[x,y] - vector_field[x-1,y]
-    return vector_field
+            vector_field[i-1] = vector_field[i] - vector_field[i]
+        if point_area(k, mask) == 1:
+            border = [(x+1,y),(x-1,y),(x,y+1),(x,y-1)]
+            for p in border:
+                if mask[p] == False:
+                    vector_field[i] = vector_field[i] + target[p]
+    unknown_values = np.linalg.solve(matA, vector_field)
+    composite = np.copy(target).astype(int)
+    for i, k in enumerate(points):
+        #print(unknown_values[i])
+        composite[k] = unknown_values[i]
+    return composite
 
 if __name__ == "__main__":
-    #source_name = "source_q1(1).jpg"
-    #target_name = "target_q1(1).jpg"
-    #mask_name = "phone.jpg"
-    source_name = input("Enter file name of source image ")
-    target_name = input("Enter file name of target image ")
-    mask_name = input("Enter file name of mask ")
+    source_name = "dog.png"
+    target_name = "beach.png"
+    mask_name = "mask1.png"
+    #source_name = input("Enter file name of source image ")
+    #target_name = input("Enter file name of target image ")
+    #mask_name = input("Enter file name of mask ")
 
     source_image = cv2.imread(source_name)
     target_image = cv2.imread(target_name)
@@ -95,13 +111,12 @@ if __name__ == "__main__":
     mask = mask[:,:,0]
     RGBchannels = np.atleast_1d(source_image).shape[-1]
     results = []
-    for channel in range(RGBchannels):
-        #Poisson w/o gradient mixing
-        results.append(poisson_blend(source[:,:,channel], target[:,:,channel], mask))
-        #Gradient mixing
-        #source_grad = compute_gradient(source[:,:,channel], mask)
-        #target_grad = compute_gradient(target[:,:,channel], mask)
-        #results.append(compute_vector(source_grad, target_grad, mask, target[:,:,channel]))
+    for channel in range(3):
+        #print(len(poisson_blend(source[:,:,channel], target[:,:,channel], mask)))
+        #results.append(poisson_blend(source[:,:,channel], target[:,:,channel], mask))
+        source_grad = compute_gradient(source[:,:,channel], mask)
+        target_grad = compute_gradient(target[:,:,channel], mask)
+        results.append(compute_vector(source_grad, target_grad, mask, target[:,:,channel]))
 
     result = cv2.merge(results)
     cv2.imwrite("output.jpg",result)
