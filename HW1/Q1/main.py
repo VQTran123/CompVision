@@ -24,15 +24,31 @@ def point_area(point, omega):
     return 0
 
 def create_sparse_matrix(points):
-    matrix = np.zeros((len(points),len(points)))
-    for i, k in enumerate(points):
-        matrix[i, i] = -4
-        x, y = k
+    
+    pointss = list(zip(points[0], points[1]))
+    #print(len(points[0]))
+    #print(pointss[0])
+    matrix = scipy.sparse.lil_matrix((len(points[0]),len(points[0])),dtype=np.float64)
+    #print(matrix.shape)
+    #print(matrix[0][0])
+    for i in enumerate(pointss):
+        #print(i)
+        #print(len(i[1][1]))
+        #print(str(i[1][0]) + " " + str(i[1][1]))
+        matrix[i[0], i[0]] = 4
+        x = i[1][0]
+        y = i[1][1]
         border = [(x+1,y),(x-1,y),(x,y+1),(x,y-1)]
         for point in border:
-            if point in points:
-                index = points.index(point)
-                matrix[i, index] = 1
+            #print(point)
+            if point in pointss:
+                index = pointss.index(point)
+                #matrix[],[]
+                #print(matrix[index])
+                #matrix[index] = -1
+                matrix[[index],[i[0]]] = -1
+    print("finished creating sparse matrix!!")
+    #matrix = lil_matrix(matrix)
     return matrix
 
 
