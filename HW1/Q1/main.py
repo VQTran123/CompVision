@@ -1,8 +1,9 @@
+
 import numpy as np
+import scipy
+from scipy.sparse import lil_matrix
 from scipy.sparse import linalg
 import cv2
-
-#Problem 1
 
 def on_omega(point, omega):
     if omega[point] != 1:
@@ -23,63 +24,85 @@ def point_area(point, omega):
     return 0
 
 def create_sparse_matrix(points):
-    matrix = np.zeros((len(points),len(points)))
-    for i, k in enumerate(points):
-        matrix[i, i] = -4
-        x, y = k
+    
+    pointss = list(zip(points[0], points[1]))
+    #print(len(points[0]))
+    #print(pointss[0])
+    matrix = scipy.sparse.lil_matrix((len(points[0]),len(points[0])),dtype=np.float64)
+    #print(matrix.shape)
+    #print(matrix[0][0])
+    for i in enumerate(pointss):
+        #print(i)
+        #print(len(i[1][1]))
+        #print(str(i[1][0]) + " " + str(i[1][1]))
+        matrix[i[0], i[0]] = 4
+        x = i[1][0]
+        y = i[1][1]
         border = [(x+1,y),(x-1,y),(x,y+1),(x,y-1)]
         for point in border:
-            if point in points:
-                index = points.index(point)
-                matrix[i, index] = 1
+            #print(point)
+            if point in pointss:
+                index = pointss.index(point)
+                #matrix[],[]
+                #print(matrix[index])
+                #matrix[index] = -1
+                matrix[[index],[i[0]]] = -1
+    print("finished creating sparse matrix!!")
+    #matrix = lil_matrix(matrix)
     return matrix
 
 
 def poisson_blend(source, target, mask):    
     nonzero = np.nonzero(mask)
-    points = list(zip(nonzero[0], nonzero[1]))
-    matrixA = create_sparse_matrix(points)
-    matrixB = np.zeros(len(points))
-    for i, k in enumerate(points):
-        x,y = k
-        if y + 1 < len(source) and x + 1 < len(source[0]):
-            matrixB[i] = -4*source[x,y] + source[x+1,y] + source[x-1,y] + source[x,y+1] + source[x,y-1]
-            if point_area(k, mask) == 1:
-                border = [(x+1,y),(x-1,y),(x,y+1),(x,y-1)]
-                for p in border:
-                    if mask[p] != 1:
-                        matrixB[i] = -1*matrixB[i] - target[p]
     
-    unknown_values = linalg.cg(matrixA, matrixB)
+    points = list(zip(nonzero[0], nonzero[1]))
+    #print(len(points))
+    matrixA = create_sparse_matrix(nonzero)
+    matrixB = np.zeros(len(points))
+    #print(points[0])
+    for i, k in enumerate(points):
+        #print(i)
+        #print(k)
+        x,y = k
+        matrixB[i] = 4*source[x,y] - source[x+1,y] - source[x-1,y] - source[x,y+1] - source[x,y-1]
+        if point_area(k, mask) == 1:
+            border = [(x+1,y),(x-1,y),(x,y+1),(x,y-1)]
+            for p in border:
+                if mask[p] == False:
+                    matrixB[i] = matrixB[i] + target[p]
+    #print(matrixA)
+    #print(matrixB)
+    test = scipy.sparse.coo_matrix(matrixA)
+    #print(test.shape)
+    matA = np.zeros((matrixA.shape))
+    for i,j,v in zip(test.row, test.col, test.data):
+        #print ("(%d, %d), %s" % (i,j,v))
+        matA[i][j] = v
+        #print(str(i) + " " + str(j))
+        
+    #print(matA[210][7])    
+    #for i in matrixA:
+     #   print(matrixA[i])
+        #
+    #print(matrixA[1].shape)
+    #print(len(matrixB))
+    #unknown_values = linalg.cg(matrixA, matrixB)
+    #print(matA)
+    unknown_values = np.linalg.solve(matA, matrixB)
+    #print(unknown_values)
+    #print(target)
     composite = np.copy(target).astype(int)
     for i, k in enumerate(points):
-        composite[k] = unknown_values[0][i]
+        #print(unknown_values[i])
+        composite[k] = unknown_values[i]
     return composite
     
-def compute_gradient(image, mask):
-    nonzero = np.nonzero(mask)
-    points = list(zip(nonzero[0], nonzero[1]))
-    gradient = np.zeros(len(points))
-    for i, k in enumerate(points):
-        x,y = k
-        gradient[i] = int(image[x,y]) - int(image[x-1,y])
-    return gradient
 
-def compute_vector(s_grad, t_grad, mask, target):
-    nonzero = np.nonzero(mask)
-    points = list(zip(nonzero[0], nonzero[1]))
-    vector_field =  np.copy(target).astype(int)
-    for i, k in enumerate(points):
-        x,y = k
-        vector_field[x,y] = max(s_grad[i], t_grad[i])
-        if i != 0:
-            vector_field[x-1,y] = vector_field[x,y] - vector_field[x-1,y]
-    return vector_field
 
 if __name__ == "__main__":
-    #source_name = "source_q1(1).jpg"
-    #target_name = "target_q1(1).jpg"
-    #mask_name = "phone.jpg"
+    #source_name = "dog.png"
+    #target_name = "beach.png"
+    #mask_name = "mask1.png"
     source_name = input("Enter file name of source image ")
     target_name = input("Enter file name of target image ")
     mask_name = input("Enter file name of mask ")
@@ -88,21 +111,23 @@ if __name__ == "__main__":
     target_image = cv2.imread(target_name)
     mask_image = cv2.imread(mask_name, cv2.IMREAD_GRAYSCALE)
 
+    
+
     mask = np.atleast_3d(mask_image).astype(float)/255
-    source = np.atleast_3d(source_image)
-    target = np.atleast_3d(target_image)
+    source = np.atleast_3d(source_image).astype(float)
+    target = np.atleast_3d(target_image).astype(float)
     mask[mask != 1] = 0
     mask = mask[:,:,0]
-    RGBchannels = np.atleast_1d(source_image).shape[-1]
+    #print(len(mask))
+    #print(len(mask[0]))
+    
+    #RGBchannels = np.array(source_image).astype(int)
+    #print(len(RGBchannels))
     results = []
-    for channel in range(RGBchannels):
-        #Poisson w/o gradient mixing
+    for channel in range(3):
+        #print(len(poisson_blend(source[:,:,channel], target[:,:,channel], mask)))
         results.append(poisson_blend(source[:,:,channel], target[:,:,channel], mask))
-        #Gradient mixing
-        #source_grad = compute_gradient(source[:,:,channel], mask)
-        #target_grad = compute_gradient(target[:,:,channel], mask)
-        #results.append(compute_vector(source_grad, target_grad, mask, target[:,:,channel]))
 
     result = cv2.merge(results)
-    cv2.imwrite("output.jpg",result)
+    cv2.imwrite("output.png",result)
 
