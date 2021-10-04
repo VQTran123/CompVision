@@ -100,12 +100,12 @@ def poisson_blend(source, target, mask):
 
 
 if __name__ == "__main__":
-    #source_name = "dog.png"
-    #target_name = "beach.png"
-    #mask_name = "mask1.png"
-    source_name = input("Enter file name of source image ")
-    target_name = input("Enter file name of target image ")
-    mask_name = input("Enter file name of mask ")
+    source_name = "dog.png"
+    target_name = "beach.png"
+    mask_name = "mask1.png"
+    #source_name = input("Enter file name of source image ")
+    #target_name = input("Enter file name of target image ")
+    #mask_name = input("Enter file name of mask ")
 
     source_image = cv2.imread(source_name)
     target_image = cv2.imread(target_name)
@@ -118,6 +118,7 @@ if __name__ == "__main__":
     target = np.atleast_3d(target_image).astype(float)
     mask[mask != 1] = 0
     mask = mask[:,:,0]
+    print(mask)
     #print(len(mask))
     #print(len(mask[0]))
     
